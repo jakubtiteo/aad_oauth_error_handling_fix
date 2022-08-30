@@ -1,7 +1,10 @@
 import 'dart:async';
-import 'request/authorization_request.dart';
-import 'model/config.dart';
+
 import 'package:flutter_webview_plugin/flutter_webview_plugin.dart';
+
+import 'model/aad_auth_exception.dart';
+import 'model/config.dart';
+import 'request/authorization_request.dart';
 
 class RequestCode {
   final StreamController<String?> _onCodeListener = StreamController();
@@ -16,6 +19,7 @@ class RequestCode {
         _authorizationRequest = AuthorizationRequest(config) {
     _onCodeStream = _onCodeListener.stream.asBroadcastStream();
   }
+
   Future<String?> requestCode() async {
     String? code;
     final urlParams = _constructUrlParams();
@@ -30,10 +34,13 @@ class RequestCode {
 
     _webView.onUrlChanged.listen((String url) {
       var uri = Uri.parse(url);
-
-      if (uri.queryParameters['error'] != null) {
+      final error = uri.queryParameters['error'];
+      if (error != null) {
         _webView.close();
-        _onCodeListener.add(null);
+        _onCodeListener.addError(AadAuthException(
+          error: error,
+          errorSubcode: uri.queryParameters['error_subcode'],
+        ));
       }
 
       if (uri.queryParameters['code'] != null) {
